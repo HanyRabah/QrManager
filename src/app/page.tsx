@@ -1,5 +1,7 @@
 'use client';
 
+import createCache from '@emotion/cache';
+import { CacheProvider } from '@emotion/react';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
@@ -13,6 +15,7 @@ import {
   Button,
   Card,
   CardContent,
+  createTheme,
   Dialog,
   DialogActions,
   DialogContent,
@@ -28,19 +31,45 @@ import {
   TableHead,
   TableRow,
   TextField,
+  ThemeProvider,
   Tooltip,
   Typography,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
+import { prefixer } from 'stylis';
+import rtlPlugin from 'stylis-plugin-rtl';
 import * as XLSX from 'xlsx';
+
+// Create rtl cache
+const cacheRtl = createCache({
+  key: 'muirtl',
+  stylisPlugins: [prefixer, rtlPlugin],
+});
+
+// Create RTL theme
+const theme = createTheme({
+  direction: 'rtl',
+});
+
+const StatusChip = styled('span')<{ scanned: boolean }>(({ theme, scanned }) => ({
+  padding: theme.spacing(0.5, 1.5),
+  borderRadius: '16px',
+  fontSize: '0.875rem',
+  backgroundColor: scanned ? '#e6f4ea' : '#fdeded',
+  color: scanned ? '#1e7e34' : '#d32f2f',
+  display: 'inline-block',
+  textAlign: 'center',
+}));
 
 interface User {
   id?: string;
   name: string;
   title: string;
   district: string;
-  region: string; 
+  region: string;
   scanned?: boolean;
+  scannedTimes?: number;
 }
 
 export default function Home() {
@@ -52,7 +81,6 @@ export default function Home() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -60,15 +88,11 @@ export default function Home() {
   const filterUsers = React.useCallback(() => {
     const query = searchQuery.toLowerCase();
     const filtered = users.filter((user) =>
-      Object.values(user)
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
+      Object.values(user).join(' ').toLowerCase().includes(query)
     );
     setFilteredUsers(filtered);
   }, [searchQuery, users]);
 
-  // Filter users when search query changes
   useEffect(() => {
     filterUsers();
   }, [filterUsers]);
@@ -141,21 +165,17 @@ export default function Home() {
     if (!selectedUser?.id) return;
 
     try {
-
-      const updatedUser = { ...selectedUser };
-
-
       const response = await fetch(`/api/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedUser),
+        body: JSON.stringify(selectedUser),
       });
-  
+
       if (!response.ok) throw new Error('Failed to update user');
-  
-      await fetchUsers(); // Refresh the user list
+
+      await fetchUsers();
       setEditDialogOpen(false);
       setSelectedUser(null);
     } catch {
@@ -164,7 +184,7 @@ export default function Home() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستخدم؟')) return;
 
     try {
       const response = await fetch(`/api/users/${id}`, {
@@ -174,180 +194,187 @@ export default function Home() {
       if (!response.ok) throw new Error('Failed to delete user');
 
       await fetchUsers();
-    } catch{
+    } catch {
       setError('Failed to delete user');
     }
   };
 
- 
   if (loading) return <LinearProgress />;
 
   return (
-    <Box>
-      {/* Header Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          QR Code Manager
-        </Typography>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<UploadIcon />}
-              >
-                Upload Excel
-                <input
-                  type="file"
-                  hidden
-                  accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                />
-              </Button> 
+    <CacheProvider value={cacheRtl}>
+      <ThemeProvider theme={theme}>
+        <Box dir="rtl">
+          {/* Header Section */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" gutterBottom>
+              QR Manager - by deepAdv
+            </Typography>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="contained"
+                    component="label"
+                    startIcon={<UploadIcon />}
+                  >
+                    رفع ملف Excel
+                    <input
+                      type="file"
+                      hidden
+                      accept=".xlsx,.xls"
+                      onChange={handleFileUpload}
+                    />
+                  </Button>
 
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleExport}
-                disabled={users.length === 0}
-              >
-                Export Excel
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-
-      {/* Search and Table Section */}
-      <Card>
-        <CardContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
-              {error}
-            </Alert>
-          )}
-
-          <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="Search users..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ mb: 3 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>الاسم</TableCell>
-                  <TableCell>الجهة</TableCell>
-                  <TableCell>البلد</TableCell>
-                  <TableCell>المنطقة</TableCell>
-                  <TableCell>تم المسح</TableCell>
-                  <TableCell>الإجراءات</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.title}</TableCell>
-                    <TableCell>{user.district}</TableCell>
-                    <TableCell>{user.region}</TableCell>
-                    <TableCell>
-                      {user.scanned ? 'Scanned' : 'Not Scanned'}
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title="Edit">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleEdit(user)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton
-                            size="small"
-                            onClick={() => user.id && handleDelete(user.id)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
-
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Edit User</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Name"
-              value={selectedUser?.name || ''}
-              onChange={(e) =>
-                setSelectedUser(
-                  (prev) => prev && { ...prev, name: e.target.value }
-                )
-              }
-              fullWidth
-            />
-            <TextField
-              label="Title"
-              value={selectedUser?.title || ''}
-              onChange={(e) =>
-                setSelectedUser(
-                  (prev) => prev && { ...prev, title: e.target.value }
-                )
-              }
-              fullWidth
-            />
-            <TextField
-              label="District"
-              value={selectedUser?.district || ''}
-              onChange={(e) =>
-                setSelectedUser(
-                  (prev) => prev && { ...prev, district: e.target.value }
-                )
-              }
-              fullWidth
-            />
-            <TextField
-              label="Region"
-              value={selectedUser?.region || ''}
-              onChange={(e) =>
-                setSelectedUser(
-                  (prev) => prev && { ...prev, region: e.target.value }
-                )
-              }
-              fullWidth
-            />
+                  <Button
+                    variant="outlined"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleExport}
+                    disabled={users.length === 0}
+                  >
+                    تحميل ملف Excel
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+
+          {/* Search and Table Section */}
+          <Card>
+            <CardContent>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+                  {error}
+                </Alert>
+              )}
+
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="البحث عن المستخدمين..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ mb: 3 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="right">الاسم</TableCell>
+                      <TableCell align="right">الجهة</TableCell>
+                      <TableCell align="right">البلد</TableCell>
+                      <TableCell align="right">المنطقة</TableCell>
+                      <TableCell align="right">حالة المسح</TableCell> 
+                      <TableCell align="right">عدد مرات المسح</TableCell>
+                      <TableCell align="right">الإجراءات</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell align="right">{user.name}</TableCell>
+                        <TableCell align="right">{user.title}</TableCell>
+                        <TableCell align="right">{user.district}</TableCell>
+                        <TableCell align="right">{user.region}</TableCell>
+                        <TableCell align="right">
+                          <StatusChip scanned={!!user.scanned}>
+                            {user.scanned ? 'تم المسح' : 'لم يتم المسح'}
+                          </StatusChip>
+                        </TableCell>
+                        <TableCell align="right">{user.scannedTimes}</TableCell>
+                        <TableCell align="right">
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                            <Tooltip title="تعديل">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEdit(user)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="حذف">
+                              <IconButton
+                                size="small"
+                                onClick={() => user.id && handleDelete(user.id)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+
+          {/* Edit Dialog */}
+          <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
+            <DialogTitle>تعديل المستخدم</DialogTitle>
+            <DialogContent>
+              <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <TextField
+                  label="الاسم"
+                  value={selectedUser?.name || ''}
+                  onChange={(e) =>
+                    setSelectedUser(
+                      (prev) => prev && { ...prev, name: e.target.value }
+                    )
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="الجهة"
+                  value={selectedUser?.title || ''}
+                  onChange={(e) =>
+                    setSelectedUser(
+                      (prev) => prev && { ...prev, title: e.target.value }
+                    )
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="البلد"
+                  value={selectedUser?.district || ''}
+                  onChange={(e) =>
+                    setSelectedUser(
+                      (prev) => prev && { ...prev, district: e.target.value }
+                    )
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="المنطقة"
+                  value={selectedUser?.region || ''}
+                  onChange={(e) =>
+                    setSelectedUser(
+                      (prev) => prev && { ...prev, region: e.target.value }
+                    )
+                  }
+                  fullWidth
+                />
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setEditDialogOpen(false)}>إلغاء</Button>
+              <Button onClick={handleSave} variant="contained">
+                حفظ
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
+      </ThemeProvider>
+    </CacheProvider>
   );
 }

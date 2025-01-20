@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String?
-  title     String?
-  district  String?
-  region    String?
-  scanned   Boolean?  @default(false)
-  scanTime  DateTime?
-  location  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String?
+  title         String?
+  district      String?
+  region        String?
+  scanned       Boolean?  @default(false)
+  scannedTimes  Int? @default(0)
+  scanTime      DateTime?
+  location      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

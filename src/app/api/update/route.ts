@@ -33,7 +33,8 @@ export async function POST(request: Request) {
                     message: 'User already scanned',
                     user: {
                         name: user.name,
-                        scanTime: user.scanTime
+                        scanTime: user.scanTime,
+                        scannedTimes: (user.scannedTimes ?? 0) + 1
                     }
                 },
                 { status: 409 }
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
             data: {
                 scanned: true,
                 scanTime: scanTime,
+                scannedTimes: (user.scannedTimes ?? 0) + 1
             },
         });
 
@@ -53,7 +55,8 @@ export async function POST(request: Request) {
             message: 'Successfully scanned',
             user: {
                 name: updatedUser.name,
-                scanTime: updatedUser.scanTime
+                scanTime: updatedUser.scanTime,
+                scannedTimes: (user.scannedTimes ?? 0) + 1
             }
         });
     } catch (error) {
