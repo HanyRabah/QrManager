@@ -4,20 +4,8 @@ import { NextResponse } from 'next/server';
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
-    console.log("🚀 ~ POST ~ request:", request)
     try {
-        const payload = await request.json();
-        console.log("🚀 ~ POST ~ payload:", payload)
-        
-        if (!payload || typeof payload !== 'object') {
-            return NextResponse.json(
-                { error: 'Invalid payload format' },
-                { status: 400 }
-            );
-        }
-
-        const { id, scanTime } = payload;
-        console.log('Destructured values:', { id, scanTime }); // Debug log
+        const { id, scanTime } = await request.json();
 
         if (!id || !scanTime) {
             return NextResponse.json(
@@ -26,15 +14,48 @@ export async function POST(request: Request) {
             );
         }
 
+        // First check if user exists
+        const user = await prisma.user.findUnique({
+            where: { id }
+        });
+
+        if (!user) {
+            return NextResponse.json(
+                { error: 'User not found' },
+                { status: 404 }
+            );
+        }
+
+        if (user.scanned) {
+            return NextResponse.json(
+                { 
+                    status: 'already_scanned',
+                    message: 'User already scanned',
+                    user: {
+                        name: user.name,
+                        scanTime: user.scanTime
+                    }
+                },
+                { status: 409 }
+            );
+        }
+
         const updatedUser = await prisma.user.update({
             where: { id },
             data: {
                 scanned: true,
-                scanTime: scanTime || new Date(),
+                scanTime: scanTime,
             },
         });
 
-        return NextResponse.json(updatedUser);
+        return NextResponse.json({
+            status: 'success',
+            message: 'Successfully scanned',
+            user: {
+                name: updatedUser.name,
+                scanTime: updatedUser.scanTime
+            }
+        });
     } catch (error) {
         console.error('Error updating user status:', error);
         return NextResponse.json(
