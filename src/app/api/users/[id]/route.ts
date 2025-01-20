@@ -12,16 +12,14 @@ export async function PUT(
   try {
     const data = await request.json();
     const { id } = await params;
-    // Include qrCode in the update data
-    const updatedUser = await prisma.user.update({
+     const updatedUser = await prisma.user.update({
       where: { id},
       data: {
         name: data.name,
         title: data.title,
         district: data.district,
         region: data.region,
-        qrCode: data.qrCode // Ensure qrCode is included
-      },
+       },
     });
 
     return NextResponse.json(updatedUser);

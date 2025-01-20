@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import {
+  Assessment,
+  CreditCard,
+  Dashboard,
+  Menu as MenuIcon,
+  People,
+} from '@mui/icons-material';
 import {
   AppBar,
   Box,
@@ -15,16 +21,9 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Dashboard,
-  People,
-  QrCode,
-  CreditCard,
-  Assessment,
-} from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import React, { useState } from 'react';
 
 const drawerWidth = 240;
 
@@ -35,8 +34,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const menuItems = [
     { text: 'Dashboard', icon: <Dashboard />, path: '/' },
     { text: 'User Management', icon: <People />, path: '/users' },
-    { text: 'QR Codes', icon: <QrCode />, path: '/qr-codes' },
-    { text: 'Business Cards', icon: <CreditCard />, path: '/business-cards' },
+     { text: 'Business Cards', icon: <CreditCard />, path: '/business-cards' },
     { text: 'Reports', icon: <Assessment />, path: '/reports' },
   ];
 
