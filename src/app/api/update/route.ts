@@ -27,6 +27,12 @@ export async function POST(request: Request) {
         }
 
         if (user.scanned) {
+            await prisma.user.update({
+                where: { id },
+                data: {
+                    scannedTimes: (user.scannedTimes ?? 0) + 1
+                },
+            });
             return NextResponse.json(
                 { 
                     status: 'already_scanned',
@@ -34,7 +40,6 @@ export async function POST(request: Request) {
                     user: {
                         name: user.name,
                         scanTime: user.scanTime,
-                        scannedTimes: (user.scannedTimes ?? 0) + 1
                     }
                 },
                 { status: 409 }
@@ -56,7 +61,6 @@ export async function POST(request: Request) {
             user: {
                 name: updatedUser.name,
                 scanTime: updatedUser.scanTime,
-                scannedTimes: (user.scannedTimes ?? 0) + 1
             }
         });
     } catch (error) {
